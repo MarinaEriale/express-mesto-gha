@@ -1,5 +1,4 @@
-const { default: mongoose } = require("mongoose");
-const userModel = require("../models/user");
+const userModel = require('../models/user');
 
 const ERROR_CODE = 400;
 const ERROR_NOT_FOUND = 404;
@@ -10,11 +9,11 @@ exports.getUsers = (req, res) => {
     .find({})
     .then((user) => res.send({ data: user }))
     .catch((err) => {
-      if (err.name === "ValidationError") {
+      if (err.name === 'ValidationError') {
         res
           .status(ERROR_CODE)
           .send({ message: `Ошибка ${err} Переданы некорректные данные` });
-      } else if (err.name === "CastError") {
+      } else if (err.name === 'CastError') {
         res.status(ERROR_NOT_FOUND).send({
           message: `Ошибка ${err} Запрашиваемый ресурс не был найден`,
         });
@@ -29,20 +28,29 @@ exports.getUsers = (req, res) => {
 exports.getUserById = (req, res) => {
   userModel
     .findById(req.params.userId)
-    .then((user) => res.send({
-      name: user.name,
-      about: user.about,
-      avatar: user.avatar,
-      _id: user._id
-     }))
+    .then((user) => {
+      if (user === null) {
+        res.status(ERROR_NOT_FOUND)
+          .send({
+            message: 'Пользователь не был найден',
+          });
+      } else {
+        res.send({
+          name: user.name,
+          about: user.about,
+          avatar: user.avatar,
+          _id: user._id,
+        });
+      }
+    })
     .catch((err) => {
-      if (err.name === "ValidationError") {
+      if (err.name === 'ValidationError') {
         res
           .status(ERROR_CODE)
           .send({ message: `Ошибка ${err} Переданы некорректные данные` });
-      } else if (err.name === "CastError") {
-        res.status(ERROR_NOT_FOUND).send({
-          message: `Ошибка ${err} Запрашиваемый ресурс не был найден`,
+      } else if (err.name === 'CastError') {
+        res.status(ERROR_CODE).send({
+          message: `Ошибка ${err} Передан не валидный id`,
         });
       } else {
         res
@@ -52,15 +60,8 @@ exports.getUserById = (req, res) => {
     });
 };
 
-// exports.getUserById = getUserById;
-
-// exports.getMeEndpoint = (req, res) => {
-// req.params.userId = req.user._id;
-//   getUserById(req, res)
-// }
-
 exports.createUser = (req, res) => {
-  const { name, about, avatar } = req.body; // получим из объекта запроса имя и описание пользователя
+  const { name, about, avatar } = req.body;
 
   userModel
     .create({ name, about, avatar }) // создадим документ на основе пришедших данных
@@ -69,18 +70,14 @@ exports.createUser = (req, res) => {
       name: user.name,
       about: user.about,
       avatar: user.avatar,
-      _id: user._id
-     }))
+      _id: user._id,
+    }))
     // данные не записались, вернём ошибку
     .catch((err) => {
-      if (err.name === "ValidationError") {
+      if (err.name === 'ValidationError') {
         res
           .status(ERROR_CODE)
           .send({ message: `Ошибка ${err} Переданы некорректные данные` });
-      } else if (err.name === "CastError") {
-        res.status(ERROR_NOT_FOUND).send({
-          message: `Ошибка ${err} Запрашиваемый ресурс не был найден`,
-        });
       } else {
         res
           .status(ERROR_DEFAULT)
@@ -97,22 +94,32 @@ exports.updateProfile = (req, res) => {
       { name: req.body.name, about: req.body.about },
       {
         new: true, // обработчик then получит на вход обновлённую запись
-      }
+        runValidators: true,
+      },
     )
-    .then((user) => res.send({
-      name: user.name,
-      about: user.about,
-      avatar: user.avatar,
-      _id: user._id
-     }))
+    .then((user) => {
+      if (user === null) {
+        res.status(ERROR_NOT_FOUND)
+          .send({
+            message: 'Пользователь не был найден',
+          });
+      } else {
+        res.send({
+          name: user.name,
+          about: user.about,
+          avatar: user.avatar,
+          _id: user._id,
+        });
+      }
+    })
     .catch((err) => {
-      if (err.name === "ValidationError") {
+      if (err.name === 'ValidationError') {
         res
           .status(ERROR_CODE)
           .send({ message: `Ошибка ${err} Переданы некорректные данные` });
-      } else if (err.name === "CastError") {
-        res.status(ERROR_NOT_FOUND).send({
-          message: `Ошибка ${err} Запрашиваемый ресурс не был найден`,
+      } else if (err.name === 'CastError') {
+        res.status(ERROR_CODE).send({
+          message: `Ошибка ${err} Передан не валидный id`,
         });
       } else {
         res
@@ -132,24 +139,32 @@ exports.updateAvatar = (req, res) => {
       { avatar },
       {
         new: true, // обработчик then получит на вход обновлённую запись
-      }
+        runValidators: true, // запуск проверки по схеме
+      },
     )
     .then((user) => {
-      res.send({
-        name: user.name,
-        about: user.about,
-        avatar: user.avatar,
-        _id: user._id
-       });
+      if (user === null) {
+        res.status(ERROR_NOT_FOUND)
+          .send({
+            message: 'Пользователь не был найден',
+          });
+      } else {
+        res.send({
+          name: user.name,
+          about: user.about,
+          avatar: user.avatar,
+          _id: user._id,
+        });
+      }
     })
     .catch((err) => {
-      if (err.name === "ValidationError") {
+      if (err.name === 'ValidationError') {
         res
           .status(ERROR_CODE)
           .send({ message: `Ошибка ${err} Переданы некорректные данные` });
-      } else if (err.name === "CastError") {
-        res.status(ERROR_NOT_FOUND).send({
-          message: `Ошибка ${err} Запрашиваемый ресурс не был найден`,
+      } else if (err.name === 'CastError') {
+        res.status(ERROR_CODE).send({
+          message: `Ошибка ${err} Передан не валидный id`,
         });
       } else {
         res
