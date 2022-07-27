@@ -1,96 +1,95 @@
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const userModel = require('../models/user');
+const IncorrectQueryError = require('../errors/incorrect-query-err');
+const NotFoundError = require('../errors/not-found-err');
+const ErrorDefault = require('../errors/error-default');
+const AuthError = require('../errors/auth-err');
+const AlreadyExistsError = require('../errors/already-exists-err');
 
-const ERROR_CODE = 400;
-const ERROR_NOT_FOUND = 404;
-const ERROR_DEFAULT = 500;
+// const ERROR_CODE = 400;
+// const ERROR_NOT_FOUND = 404;
+// const ERROR_DEFAULT = 500;
 
-exports.getUsers = (req, res) => {
+exports.getUsers = (req, res, next) => {
   userModel
-    .find({})
-    .then((user) => res.send({ data: user }))
+    .find({}, ['name', 'about', 'avatar', '_id', 'email'])
+    .then((user) => {
+      console.log(user);
+      res.send({ data: user });
+    })
     .catch((err) => {
-      if (err.name === 'ValidationError') {
-        res
-          .status(ERROR_CODE)
-          .send({ message: `Ошибка ${err} Переданы некорректные данные` });
-      } else if (err.name === 'CastError') {
-        res.status(ERROR_NOT_FOUND).send({
-          message: `Ошибка ${err} Запрашиваемый ресурс не был найден`,
-        });
-      } else {
-        res
-          .status(ERROR_DEFAULT)
-          .send({ message: `Ошибка ${err} Ошибка по умолчанию` });
+      if (err.name === 'CastError') {
+        return next(new NotFoundError('Запрашиваемый ресурс не был найден'));
       }
+      return next(new ErrorDefault('Ошибка сервера'));
     });
 };
 
-exports.getUserById = (req, res) => {
+exports.getUserById = (req, res, next) => {
   userModel
     .findById(req.params.userId)
     .then((user) => {
       if (user === null) {
-        res.status(ERROR_NOT_FOUND)
-          .send({
-            message: 'Пользователь не был найден',
-          });
-      } else {
-        res.send({
-          name: user.name,
-          about: user.about,
-          avatar: user.avatar,
-          _id: user._id,
-        });
+        return next(new NotFoundError('Пользователь не был найден'));
       }
+      return res.send({
+        name: user.name,
+        about: user.about,
+        avatar: user.avatar,
+        _id: user._id,
+      });
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        res
-          .status(ERROR_CODE)
-          .send({ message: `Ошибка ${err} Переданы некорректные данные` });
-      } else if (err.name === 'CastError') {
-        res.status(ERROR_CODE).send({
-          message: `Ошибка ${err} Передан не валидный id`,
-        });
-      } else {
-        res
-          .status(ERROR_DEFAULT)
-          .send({ message: `Ошибка ${err} Ошибка по умолчанию` });
+        return next(new IncorrectQueryError('Переданы некорректные данные'));
+      } if (err.name === 'CastError') {
+        return next(new IncorrectQueryError('Передан не валидный id'));
       }
+      return next(new ErrorDefault('Ошибка сервера'));
     });
 };
 
-exports.createUser = (req, res) => {
-  const { name, about, avatar } = req.body;
+exports.createUser = (req, res, next) => {
+  const {
+    name, about, avatar, email, password,
+  } = req.body;
 
-  userModel
-    .create({ name, about, avatar }) // создадим документ на основе пришедших данных
+  bcrypt.hash(password, 10)
+    .then((hash) => userModel
+      .create({
+        name,
+        about,
+        avatar,
+        email,
+        password: hash,
+      }) // создадим документ на основе пришедших данных
     // вернём записанные в базу данные
-    .then((user) => res.send({
-      name: user.name,
-      about: user.about,
-      avatar: user.avatar,
-      _id: user._id,
-    }))
+      .then((user) => res.send({
+        name: user.name,
+        about: user.about,
+        avatar: user.avatar,
+        _id: user._id,
+        email: user.email,
+        password: user.password,
+      }))
     // данные не записались, вернём ошибку
-    .catch((err) => {
-      if (err.name === 'ValidationError') {
-        res
-          .status(ERROR_CODE)
-          .send({ message: `Ошибка ${err} Переданы некорректные данные` });
-      } else {
-        res
-          .status(ERROR_DEFAULT)
-          .send({ message: `Ошибка ${err} Ошибка по умолчанию` });
-      }
-    });
+      .catch((err) => {
+        if (err.name === 'ValidationError') {
+          return next(new IncorrectQueryError('Переданы некорректные данные'));
+        }
+        if (err.code === 11000) {
+          return next(new AlreadyExistsError('Пользователь уже существует'));
+        }
+        return next(new ErrorDefault('Ошибка сервера'));
+      }));
 };
 
-exports.updateProfile = (req, res) => {
-  req.params.userId = req.user._id;
+exports.updateProfile = (req, res, next) => {
+  const userId = req.user._id;
   userModel
     .findByIdAndUpdate(
-      req.params.userId,
+      userId,
       { name: req.body.name, about: req.body.about },
       {
         new: true, // обработчик then получит на вход обновлённую запись
@@ -99,43 +98,32 @@ exports.updateProfile = (req, res) => {
     )
     .then((user) => {
       if (user === null) {
-        res.status(ERROR_NOT_FOUND)
-          .send({
-            message: 'Пользователь не был найден',
-          });
-      } else {
-        res.send({
-          name: user.name,
-          about: user.about,
-          avatar: user.avatar,
-          _id: user._id,
-        });
+        return next(new NotFoundError('Пользователь не был найден'));
       }
+      res.send({
+        name: user.name,
+        about: user.about,
+        avatar: user.avatar,
+        _id: user._id,
+      });
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        res
-          .status(ERROR_CODE)
-          .send({ message: `Ошибка ${err} Переданы некорректные данные` });
-      } else if (err.name === 'CastError') {
-        res.status(ERROR_CODE).send({
-          message: `Ошибка ${err} Передан не валидный id`,
-        });
-      } else {
-        res
-          .status(ERROR_DEFAULT)
-          .send({ message: `Ошибка ${err} Ошибка по умолчанию` });
+        return next(new IncorrectQueryError('Переданы некорректные данные'));
+      // } if (err.name === 'CastError') {
+      //   return next(new IncorrectQueryError('Передан не валидный id'));
       }
+      return next(new ErrorDefault('Ошибка сервера'));
     });
 };
 
-exports.updateAvatar = (req, res) => {
-  req.params.userId = req.user._id;
+exports.updateAvatar = (req, res, next) => {
+  const userId = req.user._id;
   const { avatar } = req.body;
 
   userModel
     .findByIdAndUpdate(
-      req.params.userId,
+      userId,
       { avatar },
       {
         new: true, // обработчик then получит на вход обновлённую запись
@@ -144,32 +132,70 @@ exports.updateAvatar = (req, res) => {
     )
     .then((user) => {
       if (user === null) {
-        res.status(ERROR_NOT_FOUND)
-          .send({
-            message: 'Пользователь не был найден',
-          });
-      } else {
-        res.send({
-          name: user.name,
-          about: user.about,
-          avatar: user.avatar,
-          _id: user._id,
-        });
+        return next(new NotFoundError('Пользователь не был найден'));
       }
+      return res.send({
+        name: user.name,
+        about: user.about,
+        avatar: user.avatar,
+        _id: user._id,
+      });
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        res
-          .status(ERROR_CODE)
-          .send({ message: `Ошибка ${err} Переданы некорректные данные` });
-      } else if (err.name === 'CastError') {
-        res.status(ERROR_CODE).send({
-          message: `Ошибка ${err} Передан не валидный id`,
-        });
-      } else {
-        res
-          .status(ERROR_DEFAULT)
-          .send({ message: `Ошибка ${err} Ошибка по умолчанию` });
+        return next(new IncorrectQueryError('Переданы некорректные данные'));
+      } if (err.name === 'CastError') {
+        return next(new IncorrectQueryError('Передан не валидный id'));
       }
+      return next(new ErrorDefault('Ошибка сервера'));
+    });
+};
+
+exports.login = (req, res, next) => {
+  const { email, password } = req.body;
+
+  userModel.findUserByCredentials(email, password)
+    .then((user) => {
+      // создадим токен
+      const token = jwt.sign(
+        { _id: user._id },
+        'super-strong-secret',
+        { expiresIn: '7d' },
+      );
+
+      // вернём токен
+      res.status(200).send({ token });
+    })
+    .catch((err) => {
+      if (err.name === 'Error') {
+        return next(new AuthError('Неправильная почта или пароль'));
+      }
+      return next(new ErrorDefault('Ошибка сервера'));
+    });
+};
+
+exports.getMeEndpoint = (req, res, next) => {
+  const userId = req.user._id;
+
+  userModel
+    .findById(userId)
+    .then((user) => {
+      if (user === null) {
+        return next(new NotFoundError('Пользователь не был найден'));
+      }
+      return res.send({
+        name: user.name,
+        about: user.about,
+        avatar: user.avatar,
+        _id: user._id,
+      });
+    })
+    .catch((err) => {
+      if (err.name === 'ValidationError') {
+        return next(new IncorrectQueryError('Переданы некорректные данные'));
+      } if (err.name === 'CastError') {
+        return next(new IncorrectQueryError('Передан не валидный id'));
+      }
+      return next(new ErrorDefault('Ошибка сервера'));
     });
 };

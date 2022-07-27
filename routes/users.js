@@ -3,21 +3,24 @@ const userRouter = require('express').Router();
 const {
   getUsers,
   getUserById,
-  createUser,
+  // createUser,
   updateProfile,
   updateAvatar,
+  getMeEndpoint,
 } = require('../controllers/user');
+
+const { validateUpdatedUser, validateUpdatedAvatar } = require('../middlewares/validateUpdatedData');
 
 userRouter.get('/users', getUsers);
 
-// userRouter.get('/users/me', getMeEndpoint)
+userRouter.get('/users/me', getMeEndpoint);
 
 userRouter.get('/users/:userId', getUserById);
 
-userRouter.post('/users', express.json(), createUser);
+// userRouter.post('/users', express.json(), createUser);
 
-userRouter.patch('/users/me', express.json(), updateProfile);
+userRouter.patch('/users/me', express.json(), validateUpdatedUser, updateProfile);
 
-userRouter.patch('/users/me/avatar', express.json(), updateAvatar);
+userRouter.patch('/users/me/avatar', express.json(), validateUpdatedAvatar, updateAvatar);
 
 module.exports = userRouter;
