@@ -9,7 +9,7 @@ const validateUpdatedUser = celebrate({
 
 const validateUpdatedAvatar = celebrate({
   body: Joi.object().keys({
-    avatar: Joi.string().uri(),
+    avatar: Joi.string().pattern(/(http|https):\/\/([\w.]+\/?)\S*/),
   }),
 });
 

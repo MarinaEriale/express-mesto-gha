@@ -3,23 +3,14 @@ const cardModel = require('../models/card');
 const IncorrectQueryError = require('../errors/incorrect-query-err');
 const NotFoundError = require('../errors/not-found-err');
 const ErrorDefault = require('../errors/error-default');
-const AuthError = require('../errors/auth-err');
+// const AuthError = require('../errors/auth-err');
 const ForbiddenError = require('../errors/forbidden-err');
-
-const ERROR_CODE = 400;
-const ERROR_NOT_FOUND = 404;
-const ERROR_DEFAULT = 500;
 
 exports.getCards = (req, res, next) => {
   cardModel
     .find({})
     .then((card) => res.send({ data: card }))
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        return next(new NotFoundError('Запрашиваемый ресурс не был найден'));
-      }
-      return next(new ErrorDefault('Ошибка сервера'));
-    });
+    .catch(() => next(new ErrorDefault('Ошибка сервера')));
 };
 
 exports.deleteCard = (req, res, next) => {
@@ -28,14 +19,18 @@ exports.deleteCard = (req, res, next) => {
     .then((card) => {
       if (card === null) {
         return next(new NotFoundError('Карточка не была найдена'));
-      } if (req.user._id !== card.owner.valueOf()) {
+      } if (req.user._id !== String(card.owner)) {
         return next(new ForbiddenError('Нет права на удаление карточки'));
       }
-      return cardModel
-        .findByIdAndRemove(req.params.cardId)
+      return card.remove()
         .then((deletedCard) => {
           res.status(200).send({ data: deletedCard });
         })
+      // return cardModel
+      //   .findByIdAndRemove(req.params.cardId)
+      //   .then((deletedCard) => {
+      //     res.status(200).send({ data: deletedCard });
+      //   })
         .catch((err) => {
           if (err.name === 'CastError') {
             return next(new IncorrectQueryError('Передан не валидный id'));
@@ -73,9 +68,6 @@ module.exports.createCard = (req, res, next) => {
     .catch((err) => {
       if (err.name === 'ValidationError') {
         return next(new IncorrectQueryError('Переданы некорректные данные'));
-      }
-      if (err.name === 'CastError') {
-        return next(new IncorrectQueryError('Передан не валидный id'));
       }
       return next(new ErrorDefault('Ошибка сервера'));
     });

@@ -10,12 +10,13 @@ const {
 } = require('../controllers/user');
 
 const { validateUpdatedUser, validateUpdatedAvatar } = require('../middlewares/validateUpdatedData');
+const validateUserId = require('../middlewares/validateUserId');
 
 userRouter.get('/users', getUsers);
 
 userRouter.get('/users/me', getMeEndpoint);
 
-userRouter.get('/users/:userId', getUserById);
+userRouter.get('/users/:userId', validateUserId, getUserById);
 
 // userRouter.post('/users', express.json(), createUser);
 

@@ -6,6 +6,7 @@ const cardRoutes = require('./routes/cards');
 const { createUser, login } = require('./controllers/user');
 const { auth } = require('./middlewares/auth');
 const validateUser = require('./middlewares/validateUser');
+const NotFoundError = require('./errors/not-found-err');
 
 const { PORT = 3000 } = process.env;
 
@@ -16,9 +17,11 @@ mongoose.connect('mongodb://localhost:27017/mestodb', {
   useUnifiedTopology: true,
 });
 
-app.post('/signup', express.json(), validateUser, createUser);
+app.use(express.json());
 
-app.post('/signin', express.json(), validateUser, login);
+app.post('/signup', validateUser, createUser);
+
+app.post('/signin', validateUser, login);
 
 app.use(auth);
 
@@ -26,16 +29,16 @@ app.use('/', userRoutes);
 
 app.use('/', cardRoutes);
 
-app.get('*', (req, res) => {
-  res.status(404).send({
-    message: 'Страница не была найдена',
-  });
+app.use('*', (req, res, next) => {
+  next(new NotFoundError('Страница не найдена'));
 });
 
 app.use(errors());
 
 app.use((err, req, res, next) => {
-  res.status(err.statusCode).send({ message: err.message });
+  const statusCode = err.statusCode || 500;
+  const message = statusCode === 500 ? 'На сервере произошла ошибка' : err.message;
+  res.status(statusCode).send({ message });
 });
 
 app.listen(PORT);

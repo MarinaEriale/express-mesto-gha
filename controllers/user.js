@@ -4,12 +4,7 @@ const userModel = require('../models/user');
 const IncorrectQueryError = require('../errors/incorrect-query-err');
 const NotFoundError = require('../errors/not-found-err');
 const ErrorDefault = require('../errors/error-default');
-const AuthError = require('../errors/auth-err');
 const AlreadyExistsError = require('../errors/already-exists-err');
-
-// const ERROR_CODE = 400;
-// const ERROR_NOT_FOUND = 404;
-// const ERROR_DEFAULT = 500;
 
 exports.getUsers = (req, res, next) => {
   userModel
@@ -18,12 +13,7 @@ exports.getUsers = (req, res, next) => {
       console.log(user);
       res.send({ data: user });
     })
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        return next(new NotFoundError('Запрашиваемый ресурс не был найден'));
-      }
-      return next(new ErrorDefault('Ошибка сервера'));
-    });
+    .catch(() => next(new ErrorDefault('Ошибка сервера')));
 };
 
 exports.getUserById = (req, res, next) => {
@@ -41,9 +31,7 @@ exports.getUserById = (req, res, next) => {
       });
     })
     .catch((err) => {
-      if (err.name === 'ValidationError') {
-        return next(new IncorrectQueryError('Переданы некорректные данные'));
-      } if (err.name === 'CastError') {
+      if (err.name === 'CastError') {
         return next(new IncorrectQueryError('Передан не валидный id'));
       }
       return next(new ErrorDefault('Ошибка сервера'));
@@ -71,7 +59,6 @@ exports.createUser = (req, res, next) => {
         avatar: user.avatar,
         _id: user._id,
         email: user.email,
-        password: user.password,
       }))
     // данные не записались, вернём ошибку
       .catch((err) => {
@@ -100,7 +87,7 @@ exports.updateProfile = (req, res, next) => {
       if (user === null) {
         return next(new NotFoundError('Пользователь не был найден'));
       }
-      res.send({
+      return res.send({
         name: user.name,
         about: user.about,
         avatar: user.avatar,
@@ -110,8 +97,6 @@ exports.updateProfile = (req, res, next) => {
     .catch((err) => {
       if (err.name === 'ValidationError') {
         return next(new IncorrectQueryError('Переданы некорректные данные'));
-      // } if (err.name === 'CastError') {
-      //   return next(new IncorrectQueryError('Передан не валидный id'));
       }
       return next(new ErrorDefault('Ошибка сервера'));
     });
@@ -144,8 +129,6 @@ exports.updateAvatar = (req, res, next) => {
     .catch((err) => {
       if (err.name === 'ValidationError') {
         return next(new IncorrectQueryError('Переданы некорректные данные'));
-      } if (err.name === 'CastError') {
-        return next(new IncorrectQueryError('Передан не валидный id'));
       }
       return next(new ErrorDefault('Ошибка сервера'));
     });
@@ -166,12 +149,13 @@ exports.login = (req, res, next) => {
       // вернём токен
       res.status(200).send({ token });
     })
-    .catch((err) => {
-      if (err.name === 'Error') {
-        return next(new AuthError('Неправильная почта или пароль'));
-      }
-      return next(new ErrorDefault('Ошибка сервера'));
-    });
+    .catch(next);
+  // .catch((err) => {
+  //   if (err.name === 'Error') {
+  //     return next(new AuthError('Неправильная почта или пароль'));
+  //   }
+  //   return next(new ErrorDefault('Ошибка сервера'));
+  // });
 };
 
 exports.getMeEndpoint = (req, res, next) => {
@@ -191,9 +175,7 @@ exports.getMeEndpoint = (req, res, next) => {
       });
     })
     .catch((err) => {
-      if (err.name === 'ValidationError') {
-        return next(new IncorrectQueryError('Переданы некорректные данные'));
-      } if (err.name === 'CastError') {
+      if (err.name === 'CastError') {
         return next(new IncorrectQueryError('Передан не валидный id'));
       }
       return next(new ErrorDefault('Ошибка сервера'));
