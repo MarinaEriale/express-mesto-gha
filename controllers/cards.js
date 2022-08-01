@@ -5,6 +5,7 @@ const NotFoundError = require('../errors/not-found-err');
 const ErrorDefault = require('../errors/error-default');
 // const AuthError = require('../errors/auth-err');
 const ForbiddenError = require('../errors/forbidden-err');
+const NotFoundError = require('../errors/not-found-err');
 
 exports.getCards = (req, res, next) => {
   cardModel
@@ -83,7 +84,7 @@ module.exports.likeCard = (req, res, next) => {
     )
     .then((card) => {
       if (card === null) {
-        return next(new ForbiddenError('Карточка не была найдена'));
+        return next(new NotFoundError('Карточка не была найдена'));
       }
       return res.send({
         createdAt: card.createdAt,
@@ -117,7 +118,7 @@ module.exports.dislikeCard = (req, res, next) => {
     )
     .then((card) => {
       if (card === null) {
-        return next(new ForbiddenError('Карточка не была найдена'));
+        return next(new NotFoundError('Карточка не была найдена'));
       }
       return res.send({
         createdAt: card.createdAt,
