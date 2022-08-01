@@ -5,7 +5,6 @@ const NotFoundError = require('../errors/not-found-err');
 const ErrorDefault = require('../errors/error-default');
 // const AuthError = require('../errors/auth-err');
 const ForbiddenError = require('../errors/forbidden-err');
-const NotFoundError = require('../errors/not-found-err');
 
 exports.getCards = (req, res, next) => {
   cardModel
