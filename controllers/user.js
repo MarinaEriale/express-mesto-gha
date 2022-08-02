@@ -150,12 +150,6 @@ exports.login = (req, res, next) => {
       res.status(200).send({ token });
     })
     .catch(next);
-  // .catch((err) => {
-  //   if (err.name === 'Error') {
-  //     return next(new AuthError('Неправильная почта или пароль'));
-  //   }
-  //   return next(new ErrorDefault('Ошибка сервера'));
-  // });
 };
 
 exports.getMeEndpoint = (req, res, next) => {
